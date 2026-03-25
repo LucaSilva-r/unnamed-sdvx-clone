@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #ifdef ENABLE_VIDEO
 #include "Graphics/VideoDecoder.hpp"
+#include <libavutil/pixdesc.h>
 
 namespace Graphics
 {
@@ -36,6 +37,7 @@ namespace Graphics
 			Logf("VideoDecoder: Failed to open '%s'", Logger::Severity::Error, path);
 			return false;
 		}
+		Logf("VideoDecoder: Opened input '%s'", Logger::Severity::Info, path);
 
 		if (avformat_find_stream_info(m_formatCtx, nullptr) < 0)
 		{
@@ -72,9 +74,23 @@ namespace Graphics
 				Close();
 				return false;
 			}
+			Logf(
+				"VideoDecoder: Video stream=%d codec=%s size=%dx%d pix_fmt=%d",
+				Logger::Severity::Info,
+				m_videoStreamIdx,
+				codec->name ? codec->name : "unknown",
+				codecpar->width,
+				codecpar->height,
+				(int)codecpar->format
+			);
 
 			m_videoCodecCtx = avcodec_alloc_context3(codec);
-			avcodec_parameters_to_context(m_videoCodecCtx, codecpar);
+			if (!m_videoCodecCtx || avcodec_parameters_to_context(m_videoCodecCtx, codecpar) < 0)
+			{
+				Logf("VideoDecoder: Failed to initialize video codec context", Logger::Severity::Error);
+				Close();
+				return false;
+			}
 
 			if (avcodec_open2(m_videoCodecCtx, codec, nullptr) < 0)
 			{
@@ -105,6 +121,15 @@ namespace Graphics
 				Close();
 				return false;
 			}
+			Logf(
+				"VideoDecoder: Scaler initialized src=%dx%d fmt=%d -> dst=%dx%d fmt=RGBA",
+				Logger::Severity::Info,
+				m_width,
+				m_height,
+				(int)m_videoCodecCtx->pix_fmt,
+				m_width,
+				m_height
+			);
 		}
 
 		// Audio decoding is intentionally disabled in the current video-only milestone.
@@ -117,12 +142,14 @@ namespace Graphics
 			m_duration = m_formatCtx->duration / (double)AV_TIME_BASE;
 		else
 			m_duration = 0.0;
+		Logf("VideoDecoder: Duration=%.3f fps=%.3f", Logger::Severity::Info, m_duration, m_frameRate);
 
 		return true;
 	}
 
 	void VideoDecoder::Close()
 	{
+		Logf("VideoDecoder: Closing", Logger::Severity::Info);
 		StopDecoding();
 
 		if (m_swsCtx)
@@ -234,6 +261,7 @@ namespace Graphics
 		m_decoding.store(true);
 		m_eof.store(false);
 		m_seekRequested.store(false);
+		Logf("VideoDecoder: Starting decode thread", Logger::Severity::Info);
 		m_decodeThread = new Thread([this]() { DecodeLoop(); });
 	}
 
@@ -244,6 +272,7 @@ namespace Graphics
 
 		m_decoding.store(false);
 		m_decodeCV.notify_all();
+		Logf("VideoDecoder: Stopping decode thread", Logger::Severity::Info);
 
 		if (m_decodeThread && m_decodeThread->joinable())
 			m_decodeThread->join();
@@ -258,7 +287,10 @@ namespace Graphics
 		{
 			int ret = avcodec_send_packet(m_videoCodecCtx, packet);
 			if (ret < 0 && ret != AVERROR(EAGAIN))
+			{
+				Logf("VideoDecoder: avcodec_send_packet failed (%d)", Logger::Severity::Warning, ret);
 				return false;
+			}
 
 			AVFrame* frame = av_frame_alloc();
 			while (true)
@@ -267,34 +299,146 @@ namespace Graphics
 				if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
 					break;
 				if (ret < 0)
-					break;
-
-				VideoFrame vf;
-				vf.data.resize(m_width * m_height * 4);
-
-				uint8_t* dstData[1] = { vf.data.data() };
-				int dstLinesize[1] = { m_width * 4 };
-
-				sws_scale(m_swsCtx, frame->data, frame->linesize, 0, m_height, dstData, dstLinesize);
-
-				const AVStream* stream = m_formatCtx->streams[m_videoStreamIdx];
-				const int64_t bestPts = (frame->best_effort_timestamp != AV_NOPTS_VALUE)
-					? frame->best_effort_timestamp
-					: frame->pts;
-				if (bestPts != AV_NOPTS_VALUE)
-					vf.pts = bestPts * av_q2d(stream->time_base);
-				else
-					vf.pts = m_lastVideoPts + (1.0 / std::max(1.0, m_frameRate));
-
-				vf.pts = ClampNonNegative(vf.pts);
-				m_lastVideoPts = vf.pts;
-
-				std::lock_guard<std::mutex> lock(m_videoMutex);
-				while ((int)m_videoFrames.size() >= MAX_VIDEO_FRAMES)
 				{
-					m_videoFrames.pop_front();
+					Logf("VideoDecoder: avcodec_receive_frame failed (%d)", Logger::Severity::Warning, ret);
+					break;
 				}
-				m_videoFrames.push_back(std::move(vf));
+
+				do
+				{
+					if (frame->width <= 0 || frame->height <= 0)
+					{
+						Logf("VideoDecoder: Dropping invalid frame size %dx%d", Logger::Severity::Warning, frame->width, frame->height);
+						break;
+					}
+					if (m_width <= 0 || m_height <= 0)
+					{
+						Logf(
+							"VideoDecoder: Invalid output dimensions %dx%d (source %dx%d)",
+							Logger::Severity::Error,
+							m_width,
+							m_height,
+							frame->width,
+							frame->height
+						);
+						break;
+					}
+
+					m_swsCtx = sws_getCachedContext(
+						m_swsCtx,
+						frame->width,
+						frame->height,
+						(AVPixelFormat)frame->format,
+						m_width,
+						m_height,
+						AV_PIX_FMT_RGBA,
+						SWS_BILINEAR,
+						nullptr,
+						nullptr,
+						nullptr
+					);
+					if (!m_swsCtx)
+					{
+						Logf(
+							"VideoDecoder: Failed to cache scaler for frame %dx%d fmt=%d",
+							Logger::Severity::Error,
+							frame->width,
+							frame->height,
+							frame->format
+						);
+						break;
+					}
+
+					static thread_local int decodeLogCount = 0;
+					if (decodeLogCount < 5)
+					{
+						const char* pixName = av_get_pix_fmt_name((AVPixelFormat)frame->format);
+						Logf(
+							"VideoDecoder: Frame[%d] src=%dx%d fmt=%s lines=(%d,%d,%d,%d)",
+							Logger::Severity::Info,
+							decodeLogCount,
+							frame->width,
+							frame->height,
+							pixName ? pixName : "unknown",
+							frame->linesize[0],
+							frame->linesize[1],
+							frame->linesize[2],
+							frame->linesize[3]
+						);
+						decodeLogCount++;
+					}
+
+					// Use an aligned FFmpeg-owned temporary image to avoid any SIMD overrun edge-cases,
+					// then repack into a tightly packed RGBA buffer for NanoVG upload.
+					uint8_t* dstData[4] = { nullptr, nullptr, nullptr, nullptr };
+					int dstLinesize[4] = { 0, 0, 0, 0 };
+					const int allocRes = av_image_alloc(dstData, dstLinesize, m_width, m_height, AV_PIX_FMT_RGBA, 32);
+					if (allocRes < 0 || !dstData[0])
+					{
+						Logf("VideoDecoder: av_image_alloc failed (%d)", Logger::Severity::Error, allocRes);
+						break;
+					}
+
+					const int scaled = sws_scale(
+						m_swsCtx,
+						frame->data,
+						frame->linesize,
+						0,
+						frame->height,
+						dstData,
+						dstLinesize
+					);
+					if (scaled <= 0)
+					{
+						Logf("VideoDecoder: sws_scale failed (%d)", Logger::Severity::Warning, scaled);
+						av_freep(&dstData[0]);
+						break;
+					}
+
+					VideoFrame vf;
+					const size_t rowBytes = (size_t)m_width * 4u;
+					const size_t packedSize = rowBytes * (size_t)m_height;
+					vf.data.resize(packedSize);
+
+					const uint8_t* srcBase = dstData[0];
+					int srcStride = dstLinesize[0];
+					if (srcStride < 0)
+					{
+						srcBase = dstData[0] + ((size_t)(m_height - 1) * (size_t)(-srcStride));
+						srcStride = -srcStride;
+					}
+					for (int y = 0; y < m_height; y++)
+					{
+						memcpy(
+							vf.data.data() + ((size_t)y * rowBytes),
+							srcBase + ((size_t)y * (size_t)srcStride),
+							rowBytes
+						);
+					}
+
+					av_freep(&dstData[0]);
+
+					const AVStream* stream = m_formatCtx->streams[m_videoStreamIdx];
+					const int64_t bestPts = (frame->best_effort_timestamp != AV_NOPTS_VALUE)
+						? frame->best_effort_timestamp
+						: frame->pts;
+					if (bestPts != AV_NOPTS_VALUE)
+						vf.pts = bestPts * av_q2d(stream->time_base);
+					else
+						vf.pts = m_lastVideoPts + (1.0 / std::max(1.0, m_frameRate));
+
+					vf.pts = ClampNonNegative(vf.pts);
+					m_lastVideoPts = vf.pts;
+
+					std::lock_guard<std::mutex> lock(m_videoMutex);
+					while ((int)m_videoFrames.size() >= MAX_VIDEO_FRAMES)
+					{
+						m_videoFrames.pop_front();
+					}
+					m_videoFrames.push_back(std::move(vf));
+				} while (false);
+
+				av_frame_unref(frame);
 			}
 			av_frame_free(&frame);
 			return true;
@@ -328,6 +472,7 @@ namespace Graphics
 		AVPacket* packet = av_packet_alloc();
 		if (!packet)
 			return;
+		Logf("VideoDecoder: Decode loop started", Logger::Severity::Info);
 
 		while (m_decoding.load())
 		{
@@ -367,11 +512,13 @@ namespace Graphics
 				if (ret == AVERROR_EOF)
 				{
 					m_eof.store(true);
+					Logf("VideoDecoder: Reached EOF", Logger::Severity::Info);
 					std::unique_lock<std::mutex> waitLock(m_decodeMutex);
 					m_decodeCV.wait_for(waitLock, std::chrono::milliseconds(10));
 				}
 				else
 				{
+					Logf("VideoDecoder: av_read_frame error (%d)", Logger::Severity::Warning, ret);
 					std::unique_lock<std::mutex> waitLock(m_decodeMutex);
 					m_decodeCV.wait_for(waitLock, std::chrono::milliseconds(2));
 				}
@@ -384,6 +531,7 @@ namespace Graphics
 
 		av_packet_unref(packet);
 		av_packet_free(&packet);
+		Logf("VideoDecoder: Decode loop exited", Logger::Severity::Info);
 	}
 }
 

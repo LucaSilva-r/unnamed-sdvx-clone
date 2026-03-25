@@ -146,9 +146,9 @@ void VideoPlayer::Tick(float deltaTime)
 		if (m_pendingFrame.pts > m_playbackClock + FrameEpsilon)
 			break;
 
-		if ((int)m_pendingFrame.data.size() == m_decoder.GetWidth() * m_decoder.GetHeight() * 4)
+		if (!m_frameBuffer.empty() && m_pendingFrame.data.size() == m_frameBuffer.size())
 		{
-			memcpy(m_frameBuffer.data(), m_pendingFrame.data.data(), m_pendingFrame.data.size());
+			memcpy(m_frameBuffer.data(), m_pendingFrame.data.data(), m_frameBuffer.size());
 			NVGcontext* vg = g_application ? g_application->GetVGContext() : nullptr;
 			if (vg && m_nvgImage != 0)
 			{
