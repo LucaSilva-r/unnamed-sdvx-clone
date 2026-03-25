@@ -1,5 +1,6 @@
 # All third party libraries
 add_subdirectory(lua-5.3.5)
+include(CheckCXXCompilerFlag)
 
 #cpr test programs
 option(CPR_BUILD_TESTS "Set to ON to build cpr tests." OFF)
@@ -22,8 +23,11 @@ add_subdirectory(discord-rpc)
 target_include_directories(discord-rpc PUBLIC discord-rpc/include)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     # GCC 15 reports a template-body warning in discord-rpc's bundled rapidjson 1.1.0.
-    # Treat that specific warning as non-fatal so third-party code does not block local builds.
-    target_compile_options(discord-rpc PRIVATE -Wno-error=template-body)
+    # Treat that specific warning as non-fatal only when this flag is supported by the toolchain.
+    check_cxx_compiler_flag("-Wno-error=template-body" USC_HAS_WNO_ERROR_TEMPLATE_BODY)
+    if(USC_HAS_WNO_ERROR_TEMPLATE_BODY)
+        target_compile_options(discord-rpc PRIVATE -Wno-error=template-body)
+    endif()
 endif()
 
 #nanovg
