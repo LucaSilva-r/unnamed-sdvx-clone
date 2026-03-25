@@ -17,3 +17,6 @@
 [submodule "third_party/rapidjson"]
 	path = third_party/rapidjson
 	url = https://github.com/Tencent/rapidjson
+[submodule "third_party/CubismNativeFramework"]
+	path = third_party/CubismNativeFramework
+	url = https://github.com/Live2D/CubismNativeFramework.git

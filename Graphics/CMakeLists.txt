@@ -57,6 +57,73 @@ if(UNIX)
 endif(UNIX)
 
 
+if(ENABLE_VIDEO)
+    set(FFMPEG_COMPONENTS
+        libavcodec
+        libavformat
+        libswscale
+        libswresample
+        libavutil
+    )
+
+    set(FFMPEG_LINKED FALSE)
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(LIBAV QUIET IMPORTED_TARGET ${FFMPEG_COMPONENTS})
+        if(LIBAV_FOUND)
+            target_link_libraries(Graphics PkgConfig::LIBAV)
+            set(FFMPEG_LINKED TRUE)
+        endif()
+    endif()
+
+    if(NOT FFMPEG_LINKED)
+        # Manual fallback for environments without pkg-config metadata
+        find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h)
+        find_library(AVCODEC_LIBRARY avcodec)
+        find_path(AVFORMAT_INCLUDE_DIR libavformat/avformat.h)
+        find_library(AVFORMAT_LIBRARY avformat)
+        find_path(SWSCALE_INCLUDE_DIR libswscale/swscale.h)
+        find_library(SWSCALE_LIBRARY swscale)
+        find_path(SWRESAMPLE_INCLUDE_DIR libswresample/swresample.h)
+        find_library(SWRESAMPLE_LIBRARY swresample)
+        find_path(AVUTIL_INCLUDE_DIR libavutil/avutil.h)
+        find_library(AVUTIL_LIBRARY avutil)
+
+        if(NOT AVCODEC_INCLUDE_DIR OR NOT AVFORMAT_INCLUDE_DIR OR NOT SWSCALE_INCLUDE_DIR
+           OR NOT SWRESAMPLE_INCLUDE_DIR OR NOT AVUTIL_INCLUDE_DIR
+           OR NOT AVCODEC_LIBRARY OR NOT AVFORMAT_LIBRARY OR NOT SWSCALE_LIBRARY
+           OR NOT SWRESAMPLE_LIBRARY OR NOT AVUTIL_LIBRARY)
+            message(FATAL_ERROR
+                "ENABLE_VIDEO=ON but FFmpeg dependencies were not found. "
+                "Install FFmpeg development packages (avcodec/avformat/swscale/swresample/avutil) "
+                "or configure with -DENABLE_VIDEO=OFF.")
+        endif()
+
+        target_include_directories(Graphics PRIVATE
+            ${AVCODEC_INCLUDE_DIR}
+            ${AVFORMAT_INCLUDE_DIR}
+            ${SWSCALE_INCLUDE_DIR}
+            ${SWRESAMPLE_INCLUDE_DIR}
+            ${AVUTIL_INCLUDE_DIR}
+        )
+        target_link_libraries(Graphics
+            ${AVCODEC_LIBRARY}
+            ${AVFORMAT_LIBRARY}
+            ${SWSCALE_LIBRARY}
+            ${SWRESAMPLE_LIBRARY}
+            ${AVUTIL_LIBRARY}
+        )
+        set(FFMPEG_LINKED TRUE)
+    endif()
+
+    if(NOT FFMPEG_LINKED)
+        message(FATAL_ERROR
+            "ENABLE_VIDEO=ON but FFmpeg could not be configured for Graphics target.")
+    endif()
+
+    target_compile_definitions(Graphics PUBLIC ENABLE_VIDEO=1)
+endif()
+
 set_werror(Graphics)
 
 target_link_libraries(Graphics cc-common)

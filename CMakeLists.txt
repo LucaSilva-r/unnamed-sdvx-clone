@@ -111,6 +111,8 @@ if(WIN32)
 endif()
 
 OPTION(EMBEDDED "Enable embedded build" OFF)
+OPTION(ENABLE_VIDEO "Enable video playback support" ON)
+OPTION(ENABLE_LIVE2D "Enable Live2D Cubism support" OFF)
 
 if(EMBEDDED)
 	message("Enabling embedded build")

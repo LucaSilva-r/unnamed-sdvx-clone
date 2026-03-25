@@ -1,0 +1,74 @@
+#pragma once
+#ifdef ENABLE_LIVE2D
+
+#include "lua.hpp"
+#include "nanovg_gl_utils.h"
+#include <atomic>
+#include <mutex>
+#include <unordered_map>
+#include <unordered_set>
+
+namespace Live2D
+{
+	class Live2DModel
+	{
+	public:
+		Live2DModel();
+		~Live2DModel();
+
+		bool OpenModel(const String& path);
+		void Dispose();
+
+		void SetSize(int width, int height);
+		void Update(float deltaTime);
+		int GetImageHandle() const;
+
+		Vector<String> GetParameterNames() const;
+		void SetParameter(const String& name, float value);
+		void PlayMotion(const String& group, int index, int priority);
+		void SetExpression(const String& expression);
+		void SetPhysicsEnabled(bool enabled) { m_physicsEnabled = enabled; }
+
+		static int lNew(lua_State* L);
+		static int lNewSkin(lua_State* L);
+		static void DisposeState(lua_State* L);
+
+	private:
+		static int l__index(lua_State* L);
+		static int l__gc(lua_State* L);
+		static int lSetSize(lua_State* L);
+		static int lUpdate(lua_State* L);
+		static int lGetImage(lua_State* L);
+		static int lGetParameterNames(lua_State* L);
+		static int lSetParameter(lua_State* L);
+		static int lPlayMotion(lua_State* L);
+		static int lSetExpression(lua_State* L);
+		static int lSetPhysicsEnabled(lua_State* L);
+		static int lDispose(lua_State* L);
+
+		static Live2DModel* GetSelf(lua_State* L);
+		static int CreateAndPush(lua_State* L, const String& path);
+
+		void m_RegisterInLuaState(lua_State* L);
+		void m_UnregisterFromLuaState();
+		bool m_RecreateFramebuffer(int width, int height);
+		void m_RenderPlaceholder();
+
+		String m_modelPath;
+		bool m_loaded = false;
+		bool m_physicsEnabled = true;
+		int m_width = 512;
+		int m_height = 512;
+		float m_time = 0.0f;
+
+		NVGLUframebuffer* m_fbo = nullptr;
+		Map<String, float> m_parameters;
+		Vector<String> m_parameterNames;
+
+		lua_State* m_ownerState = nullptr;
+		static std::mutex s_registryMutex;
+		static std::unordered_map<lua_State*, std::unordered_set<Live2DModel*>> s_registry;
+	};
+}
+
+#endif // ENABLE_LIVE2D

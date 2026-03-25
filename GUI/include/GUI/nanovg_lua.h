@@ -55,6 +55,7 @@ struct GUIState
 	Map<lua_State*, int> nextPaintId;
 	Map<String, Graphics::Font> fontCahce;
 	Map<lua_State*, Set<int>> vgImages;
+	Map<lua_State*, Vector<void (*)(lua_State*)>> disposeHandlers;
 	Graphics::Font currentFont;
 	Vector4 fillColor;
 	int textAlign;
@@ -76,6 +77,20 @@ struct GUIState
 
 
 GUIState g_guiState;
+
+static void RegisterGUIDisposeHandler(lua_State* state, void (*handler)(lua_State*))
+{
+	if (!state || !handler)
+		return;
+
+	auto& handlers = g_guiState.disposeHandlers[state];
+	for (auto&& existing : handlers)
+	{
+		if (existing == handler)
+			return;
+	}
+	handlers.Add(handler);
+}
 
 static int LoadFont(const char* name, const char* filename, lua_State* L)
 {
@@ -1039,6 +1054,17 @@ static int lImageSize(lua_State* L /*int image*/)
 }
 static int DisposeGUI(lua_State* state)
 {
+	if (g_guiState.disposeHandlers.Contains(state))
+	{
+		Vector<void (*)(lua_State*)> handlers = g_guiState.disposeHandlers[state];
+		for (auto&& handler : handlers)
+		{
+			if (handler)
+				handler(state);
+		}
+		g_guiState.disposeHandlers.erase(state);
+	}
+
 	g_guiState.textCache[state].clear();
 	g_guiState.textCache.erase(state);
 	g_guiState.paintCache[state].clear();

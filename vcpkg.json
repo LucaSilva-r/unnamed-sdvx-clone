@@ -20,6 +20,16 @@
                 "lzo"
             ]
         },
-        "libiconv"
+        "libiconv",
+        {
+            "name": "ffmpeg",
+            "default-features": false,
+            "features": [
+                "avcodec",
+                "avformat",
+                "swscale",
+                "swresample"
+            ]
+        }
     ]
 }

@@ -20,6 +20,11 @@ set(CLANG_FORMAT_SUFFIX "ignore") #try to disable clang formatter
 option(BUILD_EXAMPLES "Build example apps" OFF)
 add_subdirectory(discord-rpc)
 target_include_directories(discord-rpc PUBLIC discord-rpc/include)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    # GCC 15 reports a template-body warning in discord-rpc's bundled rapidjson 1.1.0.
+    # Treat that specific warning as non-fatal so third-party code does not block local builds.
+    target_compile_options(discord-rpc PRIVATE -Wno-error=template-body)
+endif()
 
 #nanovg
 add_library(nanovg nanovg/src/nanovg.c)

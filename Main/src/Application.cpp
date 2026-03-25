@@ -15,6 +15,13 @@
 #include "SkinConfig.hpp"
 #include "ShadedMesh.hpp"
 #include "IR.hpp"
+#ifdef ENABLE_VIDEO
+#include "VideoPlayer.hpp"
+#endif
+#ifdef ENABLE_LIVE2D
+#include "Live2D/Live2DManager.hpp"
+#include "Live2D/Live2DModel.hpp"
+#endif
 
 #ifdef EMBEDDED
 #define NANOVG_GLES2_IMPLEMENTATION
@@ -1221,6 +1228,13 @@ bool Application::m_Init()
 		nvgCreateFont(g_guiState.vg, "fallback", *Path::Absolute("fonts/NotoSansCJKjp-Regular.otf"));
 	}
 
+#ifdef ENABLE_LIVE2D
+	if (!Live2D::Live2DManager::Get().Initialize())
+	{
+		Logf("Live2D initialization failed", Logger::Severity::Warning);
+	}
+#endif
+
 	CheckForUpdate();
 
 
@@ -1620,6 +1634,10 @@ void Application::m_Cleanup()
 	m_fonts.clear();
 
 	Discord_Shutdown();
+
+#ifdef ENABLE_LIVE2D
+	Live2D::Live2DManager::Get().Shutdown();
+#endif
 
 #ifdef EMBEDDED
 	nvgDeleteGLES2(g_guiState.vg);
@@ -2756,6 +2774,13 @@ int lGetSharedTexture(lua_State* L) {
 
 void Application::SetLuaBindings(lua_State *state)
 {
+#ifdef ENABLE_VIDEO
+	RegisterGUIDisposeHandler(state, &VideoPlayer::DisposeState);
+#endif
+#ifdef ENABLE_LIVE2D
+	RegisterGUIDisposeHandler(state, &Live2D::Live2DModel::DisposeState);
+#endif
+
 	auto pushFuncToTable = [&](const char *name, int (*func)(lua_State *)) {
 		lua_pushstring(state, name);
 		lua_pushcfunction(state, func);
@@ -2850,6 +2875,14 @@ void Application::SetLuaBindings(lua_State *state)
 		pushFuncToTable("GlobalCompositeBlendFuncSeparate", lGlobalCompositeBlendFuncSeparate);
 		pushFuncToTable("GlobalAlpha", lGlobalAlpha);
 		pushFuncToTable("CreateShadedMesh", ShadedMesh::lNew);
+#ifdef ENABLE_VIDEO
+		pushFuncToTable("LoadVideo", VideoPlayer::lNew);
+		pushFuncToTable("LoadSkinVideo", VideoPlayer::lNewSkin);
+#endif
+#ifdef ENABLE_LIVE2D
+		pushFuncToTable("LoadLive2DModel", Live2D::Live2DModel::lNew);
+		pushFuncToTable("LoadSkinLive2DModel", Live2D::Live2DModel::lNewSkin);
+#endif
 		//constants
 		//Text align
 		pushIntToTable("TEXT_ALIGN_BASELINE", NVGalign::NVG_ALIGN_BASELINE);
