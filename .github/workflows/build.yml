@@ -26,11 +26,26 @@ jobs:
                 .\bootstrap-vcpkg.bat
                 }
             - name: cmake
-              run: cmake -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -G "Visual Studio 17 2022" -A x64 .
+              run: cmake -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_MANIFEST_MODE=ON -DVCPKG_MANIFEST_INSTALL=ON -DBUNDLE_RUNTIME_DLLS=ON -G "Visual Studio 17 2022" -A x64 .
             - name: Setup MSBuild.exe
               uses: microsoft/Setup-MSBuild@v1.0.2
             - name: MSBuild
               run: msbuild USC.sln -p:Configuration=Release /m /verbosity:minimal
+            - name: Verify bundled FFmpeg DLLs
+              run: |
+                $required = @("avcodec", "avformat", "avutil", "swscale", "swresample")
+                foreach($name in $required)
+                {
+                  $matches = Get-ChildItem -Path .\bin -Filter "$name*.dll" -ErrorAction SilentlyContinue
+                  if(-not $matches)
+                  {
+                    Write-Error "Missing required runtime DLL: $name*.dll in .\bin"
+                    exit 1
+                  }
+                }
+                Write-Host "Bundled FFmpeg runtime DLLs:"
+                Get-ChildItem -Path .\bin -Filter "av*.dll" | ForEach-Object { Write-Host $_.Name }
+                Get-ChildItem -Path .\bin -Filter "sw*.dll" | ForEach-Object { Write-Host $_.Name }
             - name: Tests
               run: rm ./bin/Tests.*
             - name: Get Symbols 
@@ -57,7 +72,7 @@ jobs:
             - name: Install packages
               run: |
                 sudo apt-get update
-                sudo apt-get install g++ libegl1-mesa-dev libfreetype6-dev libogg-dev libvorbis-dev libsdl2-dev libarchive-dev zlib1g-dev libjpeg-dev libpng-dev
+                sudo apt-get install g++ pkg-config libegl1-mesa-dev libfreetype6-dev libogg-dev libvorbis-dev libsdl2-dev libarchive-dev zlib1g-dev libjpeg-dev libpng-dev libavcodec-dev libavformat-dev libswscale-dev libswresample-dev libavutil-dev
                 sudo add-apt-repository universe
                 sudo apt install libfuse2
             - name: cmake
@@ -94,7 +109,7 @@ jobs:
             - name: brew update
               run: brew update
             - name: Install packages
-              run: brew install freetype libvorbis sdl2 libpng jpeg-turbo libarchive
+              run: brew install freetype libvorbis sdl2 libpng jpeg-turbo libarchive ffmpeg pkg-config
             - name: cmake
               env:
                 DCMAKE_BUILD_TYPE: Release

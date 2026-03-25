@@ -96,6 +96,23 @@ if(MSVC)
 	set_target_properties(usc-game PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /DEBUG:FULL")
 endif(MSVC)
 
+if(WIN32 AND BUNDLE_RUNTIME_DLLS)
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.21")
+        # Bundle dynamic runtime dependencies (FFmpeg, SDL, etc.) beside usc-game.exe.
+        add_custom_command(TARGET usc-game POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_RUNTIME_DLLS:usc-game>
+                $<TARGET_FILE_DIR:usc-game>
+            COMMAND_EXPAND_LISTS
+            VERBATIM
+        )
+    else()
+        message(WARNING
+            "BUNDLE_RUNTIME_DLLS=ON requested, but CMake < 3.21 cannot resolve "
+            "TARGET_RUNTIME_DLLS automatically. Upgrade CMake or copy DLLs manually.")
+    endif()
+endif()
+
 # Dependencies
 target_link_libraries(usc-game Shared)
 target_link_libraries(usc-game Graphics)
