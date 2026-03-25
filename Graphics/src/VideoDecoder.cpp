@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #ifdef ENABLE_VIDEO
 #include "Graphics/VideoDecoder.hpp"
-#include <libavutil/pixdesc.h>
 
 namespace Graphics
 {
@@ -37,7 +36,6 @@ namespace Graphics
 			Logf("VideoDecoder: Failed to open '%s'", Logger::Severity::Error, path);
 			return false;
 		}
-		Logf("VideoDecoder: Opened input '%s'", Logger::Severity::Info, path);
 
 		if (avformat_find_stream_info(m_formatCtx, nullptr) < 0)
 		{
@@ -74,16 +72,6 @@ namespace Graphics
 				Close();
 				return false;
 			}
-			Logf(
-				"VideoDecoder: Video stream=%d codec=%s size=%dx%d pix_fmt=%d",
-				Logger::Severity::Info,
-				m_videoStreamIdx,
-				codec->name ? codec->name : "unknown",
-				codecpar->width,
-				codecpar->height,
-				(int)codecpar->format
-			);
-
 			m_videoCodecCtx = avcodec_alloc_context3(codec);
 			if (!m_videoCodecCtx || avcodec_parameters_to_context(m_videoCodecCtx, codecpar) < 0)
 			{
@@ -121,15 +109,6 @@ namespace Graphics
 				Close();
 				return false;
 			}
-			Logf(
-				"VideoDecoder: Scaler initialized src=%dx%d fmt=%d -> dst=%dx%d fmt=RGBA",
-				Logger::Severity::Info,
-				m_width,
-				m_height,
-				(int)m_videoCodecCtx->pix_fmt,
-				m_width,
-				m_height
-			);
 		}
 
 		// Audio decoding is intentionally disabled in the current video-only milestone.
@@ -142,14 +121,11 @@ namespace Graphics
 			m_duration = m_formatCtx->duration / (double)AV_TIME_BASE;
 		else
 			m_duration = 0.0;
-		Logf("VideoDecoder: Duration=%.3f fps=%.3f", Logger::Severity::Info, m_duration, m_frameRate);
-
 		return true;
 	}
 
 	void VideoDecoder::Close()
 	{
-		Logf("VideoDecoder: Closing", Logger::Severity::Info);
 		StopDecoding();
 
 		if (m_swsCtx)
@@ -261,7 +237,6 @@ namespace Graphics
 		m_decoding.store(true);
 		m_eof.store(false);
 		m_seekRequested.store(false);
-		Logf("VideoDecoder: Starting decode thread", Logger::Severity::Info);
 		m_decodeThread = new Thread([this]() { DecodeLoop(); });
 	}
 
@@ -272,7 +247,6 @@ namespace Graphics
 
 		m_decoding.store(false);
 		m_decodeCV.notify_all();
-		Logf("VideoDecoder: Stopping decode thread", Logger::Severity::Info);
 
 		if (m_decodeThread && m_decodeThread->joinable())
 			m_decodeThread->join();
@@ -347,25 +321,6 @@ namespace Graphics
 							frame->format
 						);
 						break;
-					}
-
-					static thread_local int decodeLogCount = 0;
-					if (decodeLogCount < 5)
-					{
-						const char* pixName = av_get_pix_fmt_name((AVPixelFormat)frame->format);
-						Logf(
-							"VideoDecoder: Frame[%d] src=%dx%d fmt=%s lines=(%d,%d,%d,%d)",
-							Logger::Severity::Info,
-							decodeLogCount,
-							frame->width,
-							frame->height,
-							pixName ? pixName : "unknown",
-							frame->linesize[0],
-							frame->linesize[1],
-							frame->linesize[2],
-							frame->linesize[3]
-						);
-						decodeLogCount++;
 					}
 
 					// Use an aligned FFmpeg-owned temporary image to avoid any SIMD overrun edge-cases,
@@ -472,7 +427,6 @@ namespace Graphics
 		AVPacket* packet = av_packet_alloc();
 		if (!packet)
 			return;
-		Logf("VideoDecoder: Decode loop started", Logger::Severity::Info);
 
 		while (m_decoding.load())
 		{
@@ -512,7 +466,6 @@ namespace Graphics
 				if (ret == AVERROR_EOF)
 				{
 					m_eof.store(true);
-					Logf("VideoDecoder: Reached EOF", Logger::Severity::Info);
 					std::unique_lock<std::mutex> waitLock(m_decodeMutex);
 					m_decodeCV.wait_for(waitLock, std::chrono::milliseconds(10));
 				}
@@ -531,7 +484,6 @@ namespace Graphics
 
 		av_packet_unref(packet);
 		av_packet_free(&packet);
-		Logf("VideoDecoder: Decode loop exited", Logger::Severity::Info);
 	}
 }
 
