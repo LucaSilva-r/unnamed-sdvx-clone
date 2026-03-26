@@ -1,3 +1,8 @@
+// Include glew.h before stdafx.h to avoid "gl.h included before glew.h" on macOS
+// (stdafx.h -> nuklear_sdl_gl3.h -> SDL_opengl.h -> gl.h)
+#ifdef __APPLE__
+#include <GL/glew.h>
+#endif
 #include "stdafx.h"
 #ifdef ENABLE_LIVE2D
 #include "Live2DModel.hpp"
