@@ -3,6 +3,7 @@
 #include "Live2DModel.hpp"
 #include "Application.hpp"
 #include "Live2DManager.hpp"
+#include "nanovg_gl_utils.h"
 
 #include <CubismModelSettingJson.hpp>
 #include <CubismDefaultParameterId.hpp>

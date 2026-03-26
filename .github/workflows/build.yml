@@ -73,6 +73,13 @@ jobs:
                 cp .\third_party\breakpad
                 .\third_party\breakpad\dump_syms.exe .\bin\usc-game.pdb > .\bin\crash_dumps\usc-game.syms
                 mv .\bin\usc-game.pdb .\bin\crash_dumps\.
+            - name: Copy FrameworkShaders for Live2D
+              shell: bash
+              run: |
+                rm -rf bin/FrameworkShaders
+                if [ -d third_party/CubismNativeFramework/src/Rendering/OpenGL/Shaders/Standard ]; then
+                  cp -r third_party/CubismNativeFramework/src/Rendering/OpenGL/Shaders/Standard bin/FrameworkShaders
+                fi
             - name: Upload artifact
               uses: actions/upload-artifact@master
               with:
@@ -156,6 +163,12 @@ jobs:
                 cmake -DCMAKE_BUILD_TYPE=Release $LIVE2D_FLAG .
             - name: make
               run: make
+            - name: Copy FrameworkShaders for Live2D
+              run: |
+                rm -rf bin/FrameworkShaders
+                if [ -d third_party/CubismNativeFramework/src/Rendering/OpenGL/Shaders/Standard ]; then
+                  cp -r third_party/CubismNativeFramework/src/Rendering/OpenGL/Shaders/Standard bin/FrameworkShaders
+                fi
             - name: Upload artifact
               uses: actions/upload-artifact@master
               with:

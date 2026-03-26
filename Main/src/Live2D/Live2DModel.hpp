@@ -5,14 +5,16 @@
 #include <Model/CubismUserModel.hpp>
 #include <ICubismModelSetting.hpp>
 #include <Motion/CubismMotion.hpp>
-#include <Rendering/OpenGL/CubismRenderer_OpenGLES2.hpp>
 #include <Type/csmMap.hpp>
 
 #include "lua.hpp"
-#include "nanovg_gl_utils.h"
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
+
+// Forward declarations to avoid pulling GL headers (glew.h order issues on macOS)
+struct NVGLUframebuffer;
+typedef unsigned int GLuint;
 
 namespace Live2D
 {
