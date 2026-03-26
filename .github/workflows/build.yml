@@ -113,7 +113,7 @@ jobs:
               run: |
                 LIVE2D_FLAG=""
                 if [ -d "third_party/CubismSdkCore" ]; then LIVE2D_FLAG="-DENABLE_LIVE2D=ON"; fi
-                cmake -DCMAKE_BUILD_TYPE=Release -DUSC_GNU_WERROR=Off $LIVE2D_FLAG .
+                cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSC_GNU_WERROR=Off $LIVE2D_FLAG .
             - name: make
               run: make
             - name: Prepare for bundling AppImage
