@@ -99,7 +99,7 @@ jobs:
             - name: Install packages
               run: |
                 sudo apt-get update
-                sudo apt-get install g++ pkg-config libegl1-mesa-dev libfreetype6-dev libogg-dev libvorbis-dev libsdl2-dev libarchive-dev zlib1g-dev libjpeg-dev libpng-dev libavcodec-dev libavformat-dev libswscale-dev libswresample-dev libavutil-dev
+                sudo apt-get install g++ pkg-config libegl1-mesa-dev libglu1-mesa-dev libfreetype6-dev libogg-dev libvorbis-dev libsdl2-dev libarchive-dev zlib1g-dev libjpeg-dev libpng-dev libavcodec-dev libavformat-dev libswscale-dev libswresample-dev libavutil-dev
                 sudo add-apt-repository universe
                 sudo apt install libfuse2
             - name: cmake
