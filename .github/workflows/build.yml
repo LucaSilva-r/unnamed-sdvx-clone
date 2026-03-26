@@ -16,6 +16,9 @@ jobs:
               uses: actions/checkout@v1
             - name: Checkout submodules
               run: git submodule update --init --recursive
+            - name: Fetch Live2D Cubism SDK Core
+              if: secrets.LIVE2D_SDK_TOKEN != ''
+              run: git clone https://${{ secrets.LIVE2D_SDK_TOKEN }}@github.com/${{ secrets.LIVE2D_SDK_REPO }}.git third_party/CubismSdkCore
             - name: Cache vcpkg
               uses: actions/cache@v4
               with:
@@ -32,7 +35,9 @@ jobs:
                 .\bootstrap-vcpkg.bat
                 }
             - name: cmake
-              run: cmake -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_MANIFEST_MODE=ON -DVCPKG_MANIFEST_INSTALL=ON -DBUNDLE_RUNTIME_DLLS=ON -G "Visual Studio 17 2022" -A x64 .
+              run: |
+                $live2d_flag = if (Test-Path "third_party\CubismSdkCore") { "-DENABLE_LIVE2D=ON" } else { "-DENABLE_LIVE2D=OFF" }
+                cmake -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_MANIFEST_MODE=ON -DVCPKG_MANIFEST_INSTALL=ON -DBUNDLE_RUNTIME_DLLS=ON $live2d_flag -G "Visual Studio 17 2022" -A x64 .
             - name: Setup MSBuild.exe
               uses: microsoft/Setup-MSBuild@v1.0.2
             - name: MSBuild
@@ -75,6 +80,9 @@ jobs:
               uses: actions/checkout@v1
             - name: Checkout submodules
               run: git submodule update --init --recursive
+            - name: Fetch Live2D Cubism SDK Core
+              if: secrets.LIVE2D_SDK_TOKEN != ''
+              run: git clone https://${{ secrets.LIVE2D_SDK_TOKEN }}@github.com/${{ secrets.LIVE2D_SDK_REPO }}.git third_party/CubismSdkCore
             - name: Install packages
               run: |
                 sudo apt-get update
@@ -82,7 +90,10 @@ jobs:
                 sudo add-apt-repository universe
                 sudo apt install libfuse2
             - name: cmake
-              run: cmake -DCMAKE_BUILD_TYPE=Release -DUSC_GNU_WERROR=Off .
+              run: |
+                LIVE2D_FLAG=""
+                if [ -d "third_party/CubismSdkCore" ]; then LIVE2D_FLAG="-DENABLE_LIVE2D=ON"; fi
+                cmake -DCMAKE_BUILD_TYPE=Release -DUSC_GNU_WERROR=Off $LIVE2D_FLAG .
             - name: make
               run: make
             - name: Prepare for bundling AppImage
@@ -112,14 +123,18 @@ jobs:
               uses: actions/checkout@v1
             - name: Checkout submodules
               run: git submodule update --init --recursive
+            - name: Fetch Live2D Cubism SDK Core
+              if: secrets.LIVE2D_SDK_TOKEN != ''
+              run: git clone https://${{ secrets.LIVE2D_SDK_TOKEN }}@github.com/${{ secrets.LIVE2D_SDK_REPO }}.git third_party/CubismSdkCore
             - name: brew update
               run: brew update
             - name: Install packages
               run: brew install freetype libvorbis sdl2 libpng jpeg-turbo libarchive ffmpeg pkg-config
             - name: cmake
-              env:
-                DCMAKE_BUILD_TYPE: Release
-              run: cmake .
+              run: |
+                LIVE2D_FLAG=""
+                if [ -d "third_party/CubismSdkCore" ]; then LIVE2D_FLAG="-DENABLE_LIVE2D=ON"; fi
+                cmake -DCMAKE_BUILD_TYPE=Release $LIVE2D_FLAG .
             - name: make
               run: make
             - name: Upload artifact
