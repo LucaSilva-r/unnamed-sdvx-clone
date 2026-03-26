@@ -29,7 +29,7 @@ namespace Live2D
 		if (!raw) return nullptr;
 
 		void** aligned = reinterpret_cast<void**>(
-			(reinterpret_cast<size_t>(raw) + offset) & ~(alignment - 1)
+			(reinterpret_cast<size_t>(raw) + offset) & ~(static_cast<size_t>(alignment) - 1)
 		);
 		aligned[-1] = raw;
 		return aligned;
