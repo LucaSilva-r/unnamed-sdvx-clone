@@ -1,20 +1,26 @@
 #pragma once
 #ifdef ENABLE_LIVE2D
 
+#include <CubismFramework.hpp>
+#include <Model/CubismUserModel.hpp>
+#include <ICubismModelSetting.hpp>
+#include <Motion/CubismMotion.hpp>
+#include <Rendering/OpenGL/CubismRenderer_OpenGLES2.hpp>
+#include <Type/csmMap.hpp>
+
 #include "lua.hpp"
 #include "nanovg_gl_utils.h"
-#include <atomic>
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
 
 namespace Live2D
 {
-	class Live2DModel
+	class Live2DModel : public Csm::CubismUserModel
 	{
 	public:
 		Live2DModel();
-		~Live2DModel();
+		~Live2DModel() override;
 
 		bool OpenModel(const String& path);
 		void Dispose();
@@ -23,8 +29,8 @@ namespace Live2D
 		void Update(float deltaTime);
 		int GetImageHandle() const;
 
+		void SetParameterByName(const String& name, float value);
 		Vector<String> GetParameterNames() const;
-		void SetParameter(const String& name, float value);
 		void PlayMotion(const String& group, int index, int priority);
 		void SetExpression(const String& expression);
 		void SetPhysicsEnabled(bool enabled) { m_physicsEnabled = enabled; }
@@ -34,6 +40,7 @@ namespace Live2D
 		static void DisposeState(lua_State* L);
 
 	private:
+		// Lua binding methods
 		static int l__index(lua_State* L);
 		static int l__gc(lua_State* L);
 		static int lSetSize(lua_State* L);
@@ -52,18 +59,40 @@ namespace Live2D
 		void m_RegisterInLuaState(lua_State* L);
 		void m_UnregisterFromLuaState();
 		bool m_RecreateFramebuffer(int width, int height);
-		void m_RenderPlaceholder();
+		void m_SetupModel(const String& dir, const String& fileName);
+		void m_SetupTextures();
+		void m_RenderToFBO();
 
 		String m_modelPath;
+		String m_modelHomeDir;
 		bool m_loaded = false;
 		bool m_physicsEnabled = true;
 		int m_width = 512;
 		int m_height = 512;
-		float m_time = 0.0f;
+		float m_userTimeSeconds = 0.0f;
 
 		NVGLUframebuffer* m_fbo = nullptr;
-		Map<String, float> m_parameters;
-		Vector<String> m_parameterNames;
+
+		// Cubism model data
+		Csm::ICubismModelSetting* m_modelSetting = nullptr;
+		Csm::csmMap<Csm::csmString, Csm::ACubismMotion*> m_motions;
+		Csm::csmMap<Csm::csmString, Csm::ACubismMotion*> m_expressions;
+		Csm::csmVector<Csm::CubismIdHandle> m_eyeBlinkIds;
+		Csm::csmVector<Csm::CubismIdHandle> m_lipSyncIds;
+
+		// Cached parameter IDs
+		const Csm::CubismId* m_idParamAngleX = nullptr;
+		const Csm::CubismId* m_idParamAngleY = nullptr;
+		const Csm::CubismId* m_idParamAngleZ = nullptr;
+		const Csm::CubismId* m_idParamBodyAngleX = nullptr;
+		const Csm::CubismId* m_idParamEyeBallX = nullptr;
+		const Csm::CubismId* m_idParamEyeBallY = nullptr;
+
+		// GL texture handles for model textures
+		Vector<GLuint> m_textureIds;
+
+		// VAO required for desktop GL 3.3+ (Cubism targets ES2 and doesn't create one)
+		GLuint m_vao = 0;
 
 		lua_State* m_ownerState = nullptr;
 		static std::mutex s_registryMutex;

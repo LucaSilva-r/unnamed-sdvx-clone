@@ -29,6 +29,7 @@
 #define NANOVG_GL3_IMPLEMENTATION
 #endif
 #include "nanovg_gl.h"
+#include "nanovg_gl_utils.h"
 #include "GUI/nanovg_lua.h"
 #ifdef _WIN32
 #ifdef CRASHDUMP

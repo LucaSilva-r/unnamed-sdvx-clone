@@ -111,6 +111,60 @@ add_library(GLEW
 target_compile_definitions(GLEW PUBLIC -DGLEW_NO_GLU -DGLEW_STATIC)
 target_include_directories(GLEW PUBLIC glew/include)
 
+# Live2D Cubism Native Framework (optional)
+if(ENABLE_LIVE2D)
+    # Import the prebuilt Cubism Core library
+    add_library(Live2DCubismCore STATIC IMPORTED)
+    set(CUBISM_CORE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/CubismSdkCore)
+    if(WIN32)
+        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+            set(_CUBISM_CORE_LIB_DIR ${CUBISM_CORE_DIR}/lib/windows/x86_64/143)
+        else()
+            set(_CUBISM_CORE_LIB_DIR ${CUBISM_CORE_DIR}/lib/windows/x86/143)
+        endif()
+        set_target_properties(Live2DCubismCore PROPERTIES
+            IMPORTED_LOCATION ${_CUBISM_CORE_LIB_DIR}/Live2DCubismCore_MT.lib
+            IMPORTED_LOCATION_DEBUG ${_CUBISM_CORE_LIB_DIR}/Live2DCubismCore_MTd.lib
+        )
+    elseif(APPLE)
+        if(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+            set(_CUBISM_CORE_LIB_DIR ${CUBISM_CORE_DIR}/lib/macos/arm64)
+        else()
+            set(_CUBISM_CORE_LIB_DIR ${CUBISM_CORE_DIR}/lib/macos/x86_64)
+        endif()
+        set_target_properties(Live2DCubismCore PROPERTIES
+            IMPORTED_LOCATION ${_CUBISM_CORE_LIB_DIR}/libLive2DCubismCore.a
+        )
+    else()
+        set_target_properties(Live2DCubismCore PROPERTIES
+            IMPORTED_LOCATION ${CUBISM_CORE_DIR}/lib/linux/x86_64/libLive2DCubismCore.a
+        )
+    endif()
+    set_target_properties(Live2DCubismCore PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES ${CUBISM_CORE_DIR}/include
+    )
+
+    # Build the CubismNativeFramework with OpenGL renderer
+    set(FRAMEWORK_SOURCE OpenGL CACHE STRING "" FORCE)
+    set(FRAMEWORK_GLEW_PATH ${CMAKE_CURRENT_SOURCE_DIR}/glew/include CACHE STRING "" FORCE)
+    add_subdirectory(CubismNativeFramework)
+    target_include_directories(Framework PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/CubismNativeFramework/src
+    )
+    target_include_directories(Framework PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/glew/include
+    )
+    # Set the appropriate platform define for the OpenGL renderer
+    if(WIN32)
+        target_compile_definitions(Framework PUBLIC CSM_TARGET_WIN_GL)
+    elseif(APPLE)
+        target_compile_definitions(Framework PUBLIC CSM_TARGET_MAC_GL)
+    else()
+        target_compile_definitions(Framework PUBLIC CSM_TARGET_LINUX_GL)
+    endif()
+    target_link_libraries(Framework Live2DCubismCore)
+endif()
+
 # Enable multiprocess compiling
 if(MSVC)
     target_compile_options(cpr PRIVATE /MP)
@@ -121,4 +175,7 @@ if(MSVC)
     target_compile_options(nanovg PRIVATE /MP)
     target_compile_options(soundtouch PRIVATE /MP)
     target_compile_options(sqlite3 PRIVATE /MP)
+    if(ENABLE_LIVE2D)
+        target_compile_options(Framework PRIVATE /MP)
+    endif()
 endif(MSVC)

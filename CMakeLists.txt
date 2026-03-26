@@ -20,7 +20,7 @@ option(USE_SYSTEM_CPR "Use system CPR" OFF)
 option(BUNDLE_RUNTIME_DLLS "Copy runtime DLLs next to usc-game on Windows" ON)
 
 project(USC VERSION 0.6.0)
-if(WIN32 AND ${CMAKE_VERSION} VERSION_GREATER "3.12")
+if(${CMAKE_VERSION} VERSION_GREATER "3.12")
     cmake_policy(SET CMP0079 NEW)
 endif()
 if (${CMAKE_VERSION} VERSION_GREATER "4.0")

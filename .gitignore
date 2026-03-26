@@ -68,3 +68,7 @@ Makefile
 docs/build
 docs/source/_build
 
+# Live2D Cubism SDK Core (proprietary, download separately)
+third_party/CubismSdkCore/
+CubismSdkForNative-*.zip
+

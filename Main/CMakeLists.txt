@@ -100,9 +100,10 @@ if(WIN32 AND BUNDLE_RUNTIME_DLLS)
     if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.21")
         # Bundle dynamic runtime dependencies (FFmpeg, SDL, etc.) beside usc-game.exe.
         add_custom_command(TARGET usc-game POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                $<TARGET_RUNTIME_DLLS:usc-game>
-                $<TARGET_FILE_DIR:usc-game>
+            COMMAND ${CMAKE_COMMAND} -E
+                $<IF:$<BOOL:$<TARGET_RUNTIME_DLLS:usc-game>>,copy_if_different,true>
+                $<$<BOOL:$<TARGET_RUNTIME_DLLS:usc-game>>:$<TARGET_RUNTIME_DLLS:usc-game>>
+                $<$<BOOL:$<TARGET_RUNTIME_DLLS:usc-game>>:$<TARGET_FILE_DIR:usc-game>>
             COMMAND_EXPAND_LISTS
             VERBATIM
         )
@@ -132,7 +133,7 @@ target_include_directories(usc-game SYSTEM PRIVATE ${LibArchive_INCLUDE_DIRS})
 if(ENABLE_LIVE2D)
     find_package(Live2D REQUIRED)
     target_include_directories(usc-game PRIVATE ${LIVE2D_INCLUDE_DIRS})
-    target_link_libraries(usc-game ${LIVE2D_LIBRARIES})
+    target_link_libraries(usc-game Framework)
 endif()
 
 if(WIN32)
