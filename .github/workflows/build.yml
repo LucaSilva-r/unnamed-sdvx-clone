@@ -122,18 +122,24 @@ jobs:
                 wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
                 chmod +x linuxdeploy-x86_64.AppImage
             - name: Bundle AppImage
+              env:
+                NO_STRIP: "1"
               run: |
                 ./linuxdeploy-x86_64.AppImage --custom-apprun appimage/AppRun -d appimage/usc-game.desktop -i appimage/usc-game.png -e bin/usc-game --appdir usc-appdir --output appimage
                 mv usc-game*.AppImage bin/usc-game.AppImage
                 chmod +x bin/usc-game.AppImage
                 rm bin/usc-game bin/Tests.*
-            - name: Pack everything into .tar.gz archive
-              run: cd bin && tar -czvf ../Game_linux_AppImage.tar.gz *
+            - name: Copy FrameworkShaders for Live2D
+              run: |
+                rm -rf bin/FrameworkShaders
+                if [ -d third_party/CubismNativeFramework/src/Rendering/OpenGL/Shaders/Standard ]; then
+                  cp -r third_party/CubismNativeFramework/src/Rendering/OpenGL/Shaders/Standard bin/FrameworkShaders
+                fi
             - name: Upload artifact
               uses: actions/upload-artifact@master
               with:
-                name: Game_linux_AppImage
-                path: Game_linux_AppImage.tar.gz
+                name: Game_linux
+                path: bin
     macos_build:
         name: macOS build
         runs-on: macos-latest
