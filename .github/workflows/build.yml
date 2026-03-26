@@ -18,7 +18,10 @@ jobs:
               run: git submodule update --init --recursive
             - name: Fetch Live2D Cubism SDK Core
               if: secrets.LIVE2D_SDK_TOKEN != ''
-              run: git clone https://${{ secrets.LIVE2D_SDK_TOKEN }}@github.com/${{ secrets.LIVE2D_SDK_REPO }}.git third_party/CubismSdkCore
+              run: |
+                git clone https://${{ secrets.LIVE2D_SDK_TOKEN }}@github.com/${{ secrets.LIVE2D_SDK_REPO }}.git _cubism_sdk
+                mv _cubism_sdk/Core third_party/CubismSdkCore
+                rm -rf _cubism_sdk
             - name: Cache vcpkg
               uses: actions/cache@v4
               with:
@@ -82,7 +85,10 @@ jobs:
               run: git submodule update --init --recursive
             - name: Fetch Live2D Cubism SDK Core
               if: secrets.LIVE2D_SDK_TOKEN != ''
-              run: git clone https://${{ secrets.LIVE2D_SDK_TOKEN }}@github.com/${{ secrets.LIVE2D_SDK_REPO }}.git third_party/CubismSdkCore
+              run: |
+                git clone https://${{ secrets.LIVE2D_SDK_TOKEN }}@github.com/${{ secrets.LIVE2D_SDK_REPO }}.git _cubism_sdk
+                mv _cubism_sdk/Core third_party/CubismSdkCore
+                rm -rf _cubism_sdk
             - name: Install packages
               run: |
                 sudo apt-get update
@@ -125,7 +131,10 @@ jobs:
               run: git submodule update --init --recursive
             - name: Fetch Live2D Cubism SDK Core
               if: secrets.LIVE2D_SDK_TOKEN != ''
-              run: git clone https://${{ secrets.LIVE2D_SDK_TOKEN }}@github.com/${{ secrets.LIVE2D_SDK_REPO }}.git third_party/CubismSdkCore
+              run: |
+                git clone https://${{ secrets.LIVE2D_SDK_TOKEN }}@github.com/${{ secrets.LIVE2D_SDK_REPO }}.git _cubism_sdk
+                mv _cubism_sdk/Core third_party/CubismSdkCore
+                rm -rf _cubism_sdk
             - name: brew update
               run: brew update
             - name: Install packages
