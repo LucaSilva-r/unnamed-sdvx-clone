@@ -17,9 +17,13 @@ jobs:
             - name: Checkout submodules
               run: git submodule update --init --recursive
             - name: Fetch Live2D Cubism SDK Core
-              if: secrets.LIVE2D_SDK_TOKEN != ''
+              shell: bash
+              env:
+                LIVE2D_TOKEN: ${{ secrets.LIVE2D_SDK_TOKEN }}
+                LIVE2D_REPO: ${{ secrets.LIVE2D_SDK_REPO }}
+              if: env.LIVE2D_TOKEN != ''
               run: |
-                git clone https://${{ secrets.LIVE2D_SDK_TOKEN }}@github.com/${{ secrets.LIVE2D_SDK_REPO }}.git _cubism_sdk
+                git clone https://${LIVE2D_TOKEN}@github.com/${LIVE2D_REPO}.git _cubism_sdk
                 mv _cubism_sdk/Core third_party/CubismSdkCore
                 rm -rf _cubism_sdk
             - name: Cache vcpkg
@@ -84,9 +88,12 @@ jobs:
             - name: Checkout submodules
               run: git submodule update --init --recursive
             - name: Fetch Live2D Cubism SDK Core
-              if: secrets.LIVE2D_SDK_TOKEN != ''
+              env:
+                LIVE2D_TOKEN: ${{ secrets.LIVE2D_SDK_TOKEN }}
+                LIVE2D_REPO: ${{ secrets.LIVE2D_SDK_REPO }}
+              if: env.LIVE2D_TOKEN != ''
               run: |
-                git clone https://${{ secrets.LIVE2D_SDK_TOKEN }}@github.com/${{ secrets.LIVE2D_SDK_REPO }}.git _cubism_sdk
+                git clone https://${LIVE2D_TOKEN}@github.com/${LIVE2D_REPO}.git _cubism_sdk
                 mv _cubism_sdk/Core third_party/CubismSdkCore
                 rm -rf _cubism_sdk
             - name: Install packages
@@ -130,9 +137,12 @@ jobs:
             - name: Checkout submodules
               run: git submodule update --init --recursive
             - name: Fetch Live2D Cubism SDK Core
-              if: secrets.LIVE2D_SDK_TOKEN != ''
+              env:
+                LIVE2D_TOKEN: ${{ secrets.LIVE2D_SDK_TOKEN }}
+                LIVE2D_REPO: ${{ secrets.LIVE2D_SDK_REPO }}
+              if: env.LIVE2D_TOKEN != ''
               run: |
-                git clone https://${{ secrets.LIVE2D_SDK_TOKEN }}@github.com/${{ secrets.LIVE2D_SDK_REPO }}.git _cubism_sdk
+                git clone https://${LIVE2D_TOKEN}@github.com/${LIVE2D_REPO}.git _cubism_sdk
                 mv _cubism_sdk/Core third_party/CubismSdkCore
                 rm -rf _cubism_sdk
             - name: brew update
