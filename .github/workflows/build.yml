@@ -1,7 +1,7 @@
 name: Build
 on: [push, workflow_dispatch]
 permissions:
-    contents: read
+    contents: write
     actions: write
 jobs:
     windows_build:
@@ -180,6 +180,32 @@ jobs:
               with:
                 name: Game_mac
                 path: bin
+    draft_release:
+        name: Create draft release
+        runs-on: ubuntu-latest
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'
+        needs: [windows_build, linux_build, macos_build]
+        steps:
+            - name: Download all artifacts
+              uses: actions/download-artifact@v4
+            - name: Package artifacts
+              run: |
+                cd Game && zip -r ../USC-Windows.zip . && cd ..
+                cd Game_linux && tar -czvf ../USC-Linux.tar.gz . && cd ..
+                cd Game_mac && zip -r ../USC-macOS.zip . && cd ..
+            - name: Create draft release
+              env:
+                GH_TOKEN: ${{ github.token }}
+              run: |
+                TAG="build-$(date +%Y%m%d)-${GITHUB_SHA::8}"
+                gh release create "$TAG" \
+                  --repo "$GITHUB_REPOSITORY" \
+                  --draft \
+                  --title "Build $(date +%Y-%m-%d) (${GITHUB_SHA::8})" \
+                  --notes "Automated build from commit ${GITHUB_SHA}" \
+                  USC-Windows.zip \
+                  USC-Linux.tar.gz \
+                  USC-macOS.zip
     distribution_trigger:
         name: Artifact distribution trigger
         runs-on: windows-latest
