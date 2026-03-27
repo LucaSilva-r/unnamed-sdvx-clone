@@ -577,7 +577,21 @@ Same as ``LoadVideo`` but prepends ``"skins/[skinfolder]/videos/"`` to the path.
 
 LoadLive2DModel(string path)
 ****************************
-Available only when USC is built with ``ENABLE_LIVE2D=ON``. Loads a Live2D model from a filesystem path and returns a ``Live2DModel`` userdata object.
+Available only when USC is built with ``ENABLE_LIVE2D=ON``. Loads a Live2D Cubism model (``.model3.json``) from a filesystem path and returns a ``Live2DModel`` userdata object. The model renders to an off-screen framebuffer whose image handle can be drawn with ``gfx.ImageRect``.
+
+The object supports:
+
+.. code-block:: lua
+
+	model:SetSize(width, height)        -- Set FBO render resolution (default 512x512)
+	model:Update(deltaTime)             -- Advance animation/physics and render to FBO
+	model:GetImage()                    -- Return NanoVG image handle for use with gfx.ImageRect
+	model:GetParameterNames()           -- Return table of model parameter names
+	model:SetParameter(name, value)     -- Set a model parameter by name
+	model:PlayMotion(group, index [, priority])  -- Play a motion (priority defaults to 2)
+	model:SetExpression(name)           -- Set a facial expression
+	model:SetPhysicsEnabled(bool)       -- Enable/disable physics simulation
+	model:Dispose()                     -- Free model resources
 
 LoadSkinLive2DModel(string path)
 ********************************

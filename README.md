@@ -1,22 +1,95 @@
-# Unnamed SDVX clone ![language: C/C++](https://img.shields.io/badge/language-C%2FC%2B%2B-green.svg) [![Build](https://github.com/Drewol/unnamed-sdvx-clone/workflows/Build/badge.svg)](https://github.com/Drewol/unnamed-sdvx-clone/actions)
-A game based on [KShootMania](http://www.kshootmania.com/) and [SDVX](https://remywiki.com/What_is_SOUND_VOLTEX).
+# USC Extended ![language: C/C++](https://img.shields.io/badge/language-C%2FC%2B%2B-green.svg) [![Build](https://github.com/LucaSilva-r/unnamed-sdvx-clone/workflows/Build/badge.svg)](https://github.com/LucaSilva-r/unnamed-sdvx-clone/actions)
 
-### Project status
-This repository is practically in maintenance mode as I would much rather spend my time on the rewrite to Rust that can be found [here](https://github.com/Drewol/kson-rs).
+A fork of [Unnamed SDVX Clone](https://github.com/Drewol/unnamed-sdvx-clone) that adds **video playback** and **Live2D model** support to the skinning system.
 
-### [**Download latest Windows build**](https://drewol.me/Downloads/Game.zip)
+### What's new in this fork
+
+- **Video playback in skins** — Load and play video files (MP4, WMV, etc.) from Lua scripts using the `gfx.LoadVideo` / `gfx.LoadSkinVideo` API. Videos render to a texture that can be drawn with `gfx.ImageRect`.
+- **Live2D Cubism model support** — Load and render Live2D models (`.model3.json`) from Lua scripts using the `gfx.LoadLive2DModel` / `gfx.LoadSkinLive2DModel` API. Models support motions, expressions, physics, eye blink, and breath animations.
+
+### [**Download latest build**](https://github.com/LucaSilva-r/unnamed-sdvx-clone/releases)
 
 ### [**FAQ**](https://github.com/Drewol/unnamed-sdvx-clone/wiki/F.-A.-Q.)
 
 #### [**Skinning Documentation**](https://unnamed-sdvx-clone.readthedocs.io/en/latest/index.html)
 
-#### Demo Videos:
-[![Gameplay Video](http://img.youtube.com/vi/1GCraT0ktrc/2.jpg)](https://youtu.be/1GCraT0ktrc)
-[![Portrait Gameplay](http://img.youtube.com/vi/kP1tD6bkPa4/2.jpg)](https://youtu.be/kP1tD6bkPa4)
-[![Various Settings](http://img.youtube.com/vi/_g9Xv5RDwa0/2.jpg)](https://youtu.be/_g9Xv5RDwa0)
+---
 
-### Current features:
+## Skin API: Video
+
+Load a video with `gfx.LoadVideo(path)` or `gfx.LoadSkinVideo(path)` (prepends `skins/[skin]/videos/`).
+
+```lua
+local video = gfx.LoadSkinVideo("background.mp4")
+video:SetLoop(true)
+video:Play()
+
+function render(deltaTime)
+    video:Tick(deltaTime)
+    local img = video:GetImage()
+    if img then
+        gfx.ImageRect(0, 0, screenW, screenH, img, 1, 0)
+    end
+end
+```
+
+**Methods:**
+
+| Method | Description |
+|---|---|
+| `video:Play()` | Start playback |
+| `video:Pause()` | Pause playback |
+| `video:Seek(seconds)` | Seek to position |
+| `video:SetLoop(bool)` | Enable/disable looping |
+| `video:SetVolume(volume)` | Set audio volume (0.0 - 1.0) |
+| `video:Tick(deltaTime)` | Advance playback (call each frame) |
+| `video:GetImage()` | Get NanoVG image handle for `gfx.ImageRect` |
+| `video:GetPosition()` | Get current position in seconds |
+| `video:GetDuration()` | Get total duration in seconds |
+| `video:IsPlaying()` | Check if playing |
+| `video:HasEnded()` | Check if playback ended |
+| `video:GetSize()` | Get video dimensions (returns width, height) |
+| `video:Dispose()` | Free resources |
+
+## Skin API: Live2D
+
+Load a Live2D model with `gfx.LoadLive2DModel(path)` or `gfx.LoadSkinLive2DModel(path)` (prepends `skins/[skin]/live2d/`). The path should point to a `.model3.json` file. Place the full model folder (moc3, textures, motions, etc.) alongside it.
+
+```lua
+local model = gfx.LoadSkinLive2DModel("character/character.model3.json")
+model:SetSize(2048, 2048) -- render resolution
+
+function render(deltaTime)
+    model:Update(deltaTime)
+    local img = model:GetImage()
+    if img then
+        gfx.ImageRect(x, y, size, size, img, 1, 0)
+    end
+end
+```
+
+**Methods:**
+
+| Method | Description |
+|---|---|
+| `model:SetSize(w, h)` | Set render resolution (default 512x512, use 2048x2048 for 4K) |
+| `model:Update(deltaTime)` | Advance animation/physics and render to FBO |
+| `model:GetImage()` | Get NanoVG image handle for `gfx.ImageRect` |
+| `model:GetParameterNames()` | Get table of parameter names |
+| `model:SetParameter(name, value)` | Set a model parameter by name |
+| `model:PlayMotion(group, index [, priority])` | Play a motion (priority defaults to 2) |
+| `model:SetExpression(name)` | Set a facial expression |
+| `model:SetPhysicsEnabled(bool)` | Enable/disable physics simulation |
+| `model:Dispose()` | Free model resources |
+
+> **Note:** Live2D support requires building with `ENABLE_LIVE2D=ON` and the [Cubism SDK Core](https://www.live2d.com/en/sdk/about/) placed in `third_party/CubismSdkCore/`. Published builds include Live2D support.
+
+---
+
+## Current features:
 - Completely skinnable GUI
+- **Video playback in skins** (MP4, WMV, etc. via FFmpeg)
+- **Live2D Cubism model rendering in skins**
 - OGG/MP3 Audio streaming (with preloading for gameplay performance)
 - Uses KShoot charts (`*.ksh`) (1.6 supported)
 - Functional gameplay and scoring
@@ -29,10 +102,6 @@ This repository is practically in maintenance mode as I would much rather spend 
 - Song database searching
 - Linux/Windows/macOS support
 - Song select UI/Controls to change HiSpeed and other game settings
-
-### Features currently in progress:
-- Lighting peripheral support
-- More gauge types
 
 If something breaks in the song database, delete "maps.db". **Please note this will also wipe saved scores.**
 
@@ -76,10 +145,6 @@ Just run 'usc-game' or 'usc-game_Debug' from within the 'bin' folder.
 ## How to build:
 
 ### Windows:
-It is not required to build from source. A download link to a pre-built copy of the game is located at the beginning of this README.
-The recommended Visual Studio version is 2017, if you want to use a different version then you
-will need to edit the 'GenerateWin64ProjectFiles.bat' if you want to follow the guide below.
-
 0. Clone the project using `git` and then run `git submodule update --init --recursive` to download the required submodules.
 1. Install [CMake](https://cmake.org/download/)
 2. Install [vcpkg](https://github.com/microsoft/vcpkg)
@@ -105,11 +170,7 @@ To run from Visual Studio, go to Properties for Main > Debugging > Working Direc
 2. Run `cmake -DCMAKE_BUILD_TYPE=Release .` and then `make` from the root of the project.
 3. Run the executable made in the 'bin' folder.
 
-### Embedded (Raspberry Pi):
-0. Clone the project using `git` and then run `git submodule update --init --recursive` to download the required submodules.
-1. Install the libraries listed in 'build.linux'
-	* For things that are not in the package manager repository or too low of a version you have to download and build yourself
-	* SDL2 Can be installed using the instructions found [here](https://wiki.libsdl.org/Installation#Raspberry_Pi)
-2. Run `cmake -DEMBEDDED=ON -DCMAKE_BUILD_TYPE=Release .`
-3. If cmake completes succesfully run `make`
-4. Run the executable made in the 'bin' folder
+### Building with Live2D support:
+1. Download the [Cubism SDK for Native](https://www.live2d.com/en/sdk/download/native/) and place the `Core` folder at `third_party/CubismSdkCore/`
+2. Add `-DENABLE_LIVE2D=ON` to your cmake command
+3. Place model shader files at `bin/FrameworkShaders/` (symlink to `third_party/CubismNativeFramework/src/Rendering/OpenGL/Shaders/Standard` works)
